@@ -43,6 +43,8 @@ Total: **$65.299 ARS**
 Muchos componentes fueron provistos por la escuela o realizados por los propios alumnos.
 
 
+
+
 # 📄 Documentación Técnica – Sistema Biométrico ETEC
 
 ### Proyecto: Registro Biométrico de Ingreso y Egreso  
