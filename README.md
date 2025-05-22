@@ -42,6 +42,3 @@ Escuela Técnica de la Universidad de Mendoza – 6° Año Informática
 Total: **$65.299 ARS**  
 Muchos componentes fueron provistos por la escuela o realizados por los propios alumnos.
 
----
-
-¡Este proyecto busca modernizar el sistema educativo con tecnología real aplicada a problemas reales!
