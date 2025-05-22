@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  nodered:
+    image: nodered/node-red
+    container_name: nodered
+    expose:
+      - "1880"
+    volumes:
+      - nodered_data:/data
+    restart: unless-stopped
+
+  db:
+    image: mariadb:10.5
+    container_name: db
+    expose:
+      - "3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - ../db/data:/var/lib/mysql
+    restart: unless-stopped
+
+  adminer:
+    image: adminer
+    container_name: adminer
+    expose:
+      - "8080"
+    restart: unless-stopped
+
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mosquitto
+    ports:
+      - "1883:1883"     # MQTT puerto estándar
+      - "9001:9001"     # WebSocket MQTT (opcional)
+    volumes:
+      - ../mosquitto/config:/mosquitto/config
+      - ../mosquitto/data:/mosquitto/data
+      - ../mosquitto/log:/mosquitto/log
+      - ../mosquitto/certs:/mosquitto/config/certs
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    ports:
+      - "443:443"
+    volumes:
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ../caddy/certificados:/certificados
+    restart: unless-stopped
+
+volumes:
+  nodered_data:
