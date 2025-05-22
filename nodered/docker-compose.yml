@@ -8,6 +8,7 @@ services:
       - "1880"
     volumes:
       - nodered_data:/data
+      - ./certs:/certs
     restart: unless-stopped
 
   db:
@@ -41,7 +42,6 @@ services:
       - ../mosquitto/config:/mosquitto/config
       - ../mosquitto/data:/mosquitto/data
       - ../mosquitto/log:/mosquitto/log
-      - ../mosquitto/certs:/mosquitto/config/certs
     restart: unless-stopped
 
   caddy:
