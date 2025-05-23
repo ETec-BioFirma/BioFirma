@@ -45,6 +45,9 @@ Muchos componentes fueron provistos por la escuela o realizados por los propios 
 
 
 
+
+
+
 # 📄 Documentación Técnica – Sistema Biométrico ETEC
 
 ### Proyecto: Registro Biométrico de Ingreso y Egreso  
@@ -53,7 +56,7 @@ Muchos componentes fueron provistos por la escuela o realizados por los propios 
 
 ---
 
-## 📦 Estado actual del sistema (actualizado al 22/05/2025)
+## 📦 Estado actual del sistema (actualizado al 23/05/2025)
 
 ✅ Infraestructura dockerizada  
 ✅ Base de datos MariaDB con credenciales seguras  
@@ -61,7 +64,10 @@ Muchos componentes fueron provistos por la escuela o realizados por los propios 
 ✅ Mosquitto MQTT con TLS y autenticación  
 ✅ Adminer para gestionar la base de datos local  
 ✅ Caddy como proxy reverso con certificados propios  
-✅ Archivo `.env` centralizado para credenciales
+✅ Backend Express funcionando detrás del proxy en `/api`  
+✅ Frontend Angular en proceso, planeado para servir desde `/`  
+✅ Archivo `.env` centralizado para credenciales  
+✅ Backend con API REST completa y protegida por token JWT
 
 ---
 
@@ -69,99 +75,114 @@ Muchos componentes fueron provistos por la escuela o realizados por los propios 
 
 ```bash
 /home/proyecto-biofirma/
-├── nodered/              → Contiene docker-compose.yml, .env y flujo Node-RED
-├── db/                   → Carpeta de volúmenes de MariaDB
-├── mosquitto/            → Configuración y volúmenes de MQTT
-│   ├── config/           → mosquitto.conf, passwd y certificados
-│   ├── data/             → Persistencia
-│   └── log/              → Logs
+├── nodered/              → docker-compose.yml, .env y flujo Node-RED
+├── db/                   → Volúmenes de MariaDB
+├── mosquitto/            → Configuración MQTT (TLS + auth)
 ├── caddy/                → Caddyfile + certificados HTTPS
-└── reiniciar.sh          → Script para reiniciar toda la infraestructura
+├── backend/              → Backend Express.js con rutas /api
+│   ├── routes/
+│   ├── controllers/
+│   ├── middleware/
+│   ├── app.js
+│   ├── db.js
+├── reiniciar.sh          → Script para levantar todo
 ```
 
 ---
 
-## ⚙️ Componentes del sistema
+## ⚙️ Componentes
 
 ### 1. 📊 Base de Datos – MariaDB
 
 - Imagen: `mariadb:10.5`
-- Usuario: `${MYSQL_USER}`
-- Contraseña: `${MYSQL_PASSWORD}`
-- Base de datos: `${MYSQL_DATABASE}`
-- Ruta de persistencia: `../../db/data:/var/lib/mysql`
-
-Se gestiona desde Adminer en:  
-`https://<IP-DEL-SERVIDOR>/adminer`
+- Ruta de persistencia: `db/data:/var/lib/mysql`
+- Accesible mediante Adminer en  
+  `https://<IP>/adminer`
+- Tablas principales:
+  - `cursos`, `divisiones`, `alumnos`
+  - `registros` (asistencias)
+  - `autoridades` (usuarios)
+  - `log_eventos` (eventos del sistema)
 
 ---
 
 ### 2. 🧠 Node-RED
 
 - Imagen: `nodered/node-red`
-- Corre bajo `/nodered` gracias a la variable `httpAdminRoot` y `httpNodeRoot` en `settings.js`
-- Panel accesible por:  
-  `https://<IP-DEL-SERVIDOR>/nodered`
-
-Credenciales almacenadas internamente (con posibilidad de agregar `credentialSecret` para cifrado externo más robusto).
+- Panel: `https://<IP>/nodered`
+- Configurado en modo seguro (`httpAdminRoot`, `httpNodeRoot`)
+- Planeado: integrar flujos que escriban en DB directamente desde sensores vía MQTT
 
 ---
 
 ### 3. 📡 Mosquitto MQTT
 
 - Imagen: `eclipse-mosquitto`
-- TLS activado con certificados locales
-- Autenticación mediante archivo `passwd`
-- Configuración en `mosquitto/config/mosquitto.conf`
-
-📍 Seguridad:
-- `listener 1883` con `allow_anonymous false`
-- Certificados montados desde `mosquitto/certs/`
-- Usuarios creados con `mosquitto_passwd`
+- TLS activado, con certificados en `mosquitto/certs/`
+- Seguridad:
+  - `allow_anonymous false`
+  - Usuarios definidos en `passwd`
+- Puerto MQTT: `1883`
 
 ---
 
 ### 4. 🌐 Caddy (Proxy HTTPS)
 
 - Imagen: `caddy:latest`
-- Escucha en `443` con certificados desde `caddy/certificados`
-- Redirige:
+- Corre en puerto `:443`
+- Certificados: `caddy/certificados`
+- Ruteo:
   - `/nodered` → Node-RED
   - `/adminer` → Adminer
-  - (Posibilidad de extender a `/panel`, etc.)
-
-Caddyfile configurado para subrutas y TLS autofirmado.
+  - `/panel`   → Frontend Angular
+  - `/api`     → Backend Express
 
 ---
 
-### 5. 👨‍💻 Adminer
+### 5. 👨‍💻 Backend Express (API REST)
+
+- Escucha en puerto `3001`, accedido desde proxy en `/api`
+- Rutas:
+  - Login: `/api/login`
+  - Cursos: `/api/cursos`
+  - Divisiones: `/api/cursos/:cursoId/divisiones`
+  - Alumnos: `/api/cursos/:cursoId/divisiones/:divisionId/alumnos`
+  - Historial: `/api/historial`
+  - Administración: `/api/admin/usuarios`
+  - Logs del sistema: `/api/logs`
+- Seguridad:
+  - JWT en todas las rutas menos `/api/login`
+  - Rol `admin` requerido en `/api/admin/...`
+
+---
+
+### 6. 🧾 Adminer
 
 - Imagen: `adminer`
-- Accesible en:  
-  `https://<IP-DEL-SERVIDOR>/adminer`
-- Permite gestionar directamente la base `biometrico`.
+- Ruta: `https://<IP>/adminer`
+- Gestión directa de MariaDB para debugging o consultas rápidas
 
 ---
 
-## 🔐 Archivo `.env`
+## 🔐 `.env` centralizado
 
-Todas las credenciales sensibles están centralizadas en:
+Ubicación: `/home/proyecto-biofirma/nodered/.env`
 
-📄 `/home/proyecto-biofirma/nodered/.env`
+Contiene credenciales para:
+- Base de datos
+- MQTT
+- Claves del backend (JWT secret)
 
-Ejemplo de contenido:
+Ejemplo:
 
 ```env
-MYSQL_ROOT_PASSWORD=...
 MYSQL_DATABASE=biometrico
 MYSQL_USER=biofirma
 MYSQL_PASSWORD=...
-
+JWT_SECRET=super_secreto_biofirma
 MQTT_USER=admin
 MQTT_PASSWORD=...
 ```
-
-> ⚠️ Este archivo está ignorado en `.gitignore` para no exponer claves.
 
 ---
 
@@ -175,24 +196,23 @@ Uso:
 ./reiniciar.sh
 ```
 
-Automáticamente baja y levanta todos los contenedores, y muestra los logs de Mosquitto y Node-RED.
+Levanta todos los contenedores, muestra logs clave de Mosquitto y Node-RED.
 
 ---
 
 ## ✅ Verificaciones post-reinicio
 
-- `docker ps` → debe listar 5 contenedores activos
-- `docker logs mosquitto` → debe mostrar `mosquitto version 2.x running`
-- `docker logs nodered` → debe mostrar `Connected to broker: mqtts://mosquitto:1883`
+- `docker ps` debe listar:
+  - `backend`, `nodered`, `mosquitto`, `adminer`, `caddy`, `panel` (más adelante)
+- `curl -k https://<IP>/api/login` devuelve token válido
+- `curl -k https://<IP>/api/cursos` devuelve datos reales
 
 ---
 
-## 🚧 Pendientes o próximos pasos sugeridos
+## 🧩 Próximos pasos
 
-- Crear las tablas `alumnos` y `registros` en la base de datos
-- Armar los flujos en Node-RED que:
-  - Reciban datos del sensor por MQTT
-  - Verifiquen huella → logueen `entrada` o `salida` en DB
-- Agregar interfaz `/panel` para directivos
-- Proteger `/nodered` con `basic_auth` como segunda capa (opcional)
-- Agregar `credentialSecret` en `settings.js` de Node-RED
+- Terminar frontend Angular y compilar para servir desde `/panel`
+- Agregar gráficos de presentismo
+- Validar horarios contra base de datos desde el ESP
+- Automatizar logs desde Node-RED
+- Agregar capa extra de seguridad: `basic_auth` o IP allowlist para Adminer y Node-RED
