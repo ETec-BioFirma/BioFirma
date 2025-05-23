@@ -1,6 +1,10 @@
 :443 {
   tls /certificados/fullchain.pem /certificados/privkey.pem
 
+  handle /api* {
+    reverse_proxy http://backend:3001
+  }
+
   handle /nodered* {
     reverse_proxy http://nodered:1880
   }
