@@ -12,7 +12,6 @@ const {
 
 router.use(authMiddleware);
 
-// Alumnos por curso completo (sin importar división)
 router.get('/cursos/:cursoId/alumnos', getAlumnosPorCurso);
 
 // Alumnos por división
